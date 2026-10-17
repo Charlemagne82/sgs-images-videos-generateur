@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGS images/vidéos générateur</title>
+    <style>
+        /* Couleurs de l'application */
+        :root {
+            --vert: #2ecc71;
+            --jaune: #f1c40f;
+            --rouge: #e74c3c;
+            --blanc: #ffffff;
+            --noir: #1a1a1a;
+            --violet: #8e44ad;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--noir);
+            color: var(--blanc);
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Le Logo Circulaire */
+        .logo-container {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(var(--vert), var(--jaune), var(--rouge), var(--violet), var(--vert));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 0 25px var(--violet);
+            position: relative;
+            animation: rotation 10s linear infinite;
+        }
+
+        .logo-inner {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: var(--noir);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid var(--blanc);
+            color: var(--blanc);
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 1.2;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .logo-inner span {
+            color: var(--jaune);
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        @keyframes rotation {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            color: var(--jaune);
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        p.subtitle {
+            color: var(--vert);
+            font-size: 1rem;
+            margin-bottom: 30px;
+        }
+
+        /* Formulaire */
+        .form-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid var(--violet);
+            box-shadow: 0 0 15px rgba(142, 68, 173, 0.3);
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            color: var(--vert);
+            font-weight: bold;
+        }
+
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid var(--vert);
+            background: #333;
+            color: var(--blanc);
+            font-size: 1rem;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--jaune);
+        }
+
+        button {
+            background: var(--vert);
+            color: var(--noir);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: var(--jaune);
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Logo Animé -->
+    <div class="logo-container">
+        <div class="logo-inner">
+            <span>SGS</span>
+            Images/Vidéos<br>Générateur
+        </div>
+    </div>
+
+    <!-- Titre -->
+    <h1>SGS images/vidéos générateur</h1>
+    <p class="subtitle">Créez des vidéos IA uniques en quelques clics</p>
+
+    <!-- Formulaire de Génération -->
+    <div class="form-container">
+        
+        <label for="style">1. Choisissez un univers :</label>
+        <select id="style">
+            <option value="comique">😂 Comique & Humour</option>
+            <option value="documentaire">🎥 Documentaire</option>
+            <option value="odyssee">🌍 Odyssée & Mythologie</option>
+            <option value="predication">✝️ Prédication Biblique</option>
+            <option value="histoire">📜 Histoire de l'Église</option>
+        </select>
+
+        <label for="langue">2. Langue de la voix off :</label>
+        <select id="langue">
+            <option value="fr">🇫🇷 Français (Principal)</option>
+            <option value="en">🇬🇧 Anglais</option>
+            <option value="ln">🇨🇩 Lingala</option>
+            <option value="sw">🇹🇿 Swahili</option>
+            <option value="yo">🇳🇬 Yoruba</option>
+            <option value="ha">🇳🇬 Haoussa</option>
+            <option value="fon">🇧🇯 Fongbé</option>
+        </select>
+
+        <label for="prompt">3. Décrivez votre vision :</label>
+        <textarea id="prompt" placeholder="Ex: Un documentaire sur la création du monde, avec des images de la nature..."></textarea>
+
+        <button onclick="alert('🚀 Interface prête ! La génération vidéo sera activée à la prochaine étape.')">
+            Générer la vidéo
+        </button>
+    </div>
+
+    <div class="footer">
+        SGS Générateur © 2024 - Version Alpha 1.0
+    </div>
+
+</body>
+      </html>
