@@ -60,6 +60,11 @@
             padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold;
             cursor: pointer; width: 100%; margin-bottom: 15px; display: block;
         }
+        .remove-btn {
+            background: var(--rouge); color: var(--blanc); border: none;
+            padding: 8px; border-radius: 5px; font-size: 0.8rem;
+            cursor: pointer; width: 100%; margin-bottom: 15px; display: none;
+        }
         
         button.main-btn {
             background: var(--vert); color: var(--noir); border: none;
@@ -95,12 +100,15 @@
     </div>
 
     <div class="form-container">
-        <label>1. Ajoutez une photo :</label>
+        <!-- Photo optionnelle -->
+        <label>1. Photo de départ (Optionnel) :</label>
         <label for="file-upload" class="upload-btn" id="upload-label">
             📷 Choisir une photo
         </label>
         <input type="file" id="file-upload" accept="image/*" style="display:none;" onchange="previewImage(event)">
-        <img id="image-preview" alt="Aperçu de votre photo">
+        
+        <img id="image-preview" alt="Aperçu">
+        <button class="remove-btn" id="remove-image-btn" onclick="removeImage()">❌ Retirer la photo (Pour faire du Texte-vers-Vidéo)</button>
 
         <label for="style">2. Univers :</label>
         <select id="style">
@@ -111,7 +119,6 @@
             <option value="histoire">📜 Histoire de l'Église</option>
         </select>
 
-        <!-- NOUVEAU : Choix du format -->
         <label for="format">3. Format de la vidéo :</label>
         <select id="format">
             <option value="9:16 (Portrait - TikTok/Reels/Shorts)">📱 9:16 (Portrait - TikTok/Reels)</option>
@@ -130,8 +137,8 @@
             <option value="en-US">🇬🇧 Anglais</option>
         </select>
 
-        <label for="prompt">5. Décrivez l'action (ou l'histoire à raconter) :</label>
-        <textarea id="prompt" placeholder="Ex: Fais bouger doucement les cheveux, ajoute une lumière dorée et un sourire..."></textarea>
+        <label for="prompt">5. Décrivez votre vision :</label>
+        <textarea id="prompt" placeholder="Sans photo : Décrivez la scène. Avec photo : Décrivez le mouvement..."></textarea>
 
         <button class="main-btn" id="generate-btn" onclick="generateVideo()">
             Créer la vidéo
@@ -170,11 +177,23 @@
                 const preview = document.getElementById('image-preview');
                 preview.src = imageBase64;
                 preview.style.display = 'block';
-                document.getElementById('upload-label').innerHTML = "✅ Photo sélectionnée (Appuyez pour changer)";
+                
+                document.getElementById('upload-label').innerHTML = "✅ Photo sélectionnée";
                 document.getElementById('upload-label').style.background = "var(--vert)";
                 document.getElementById('upload-label').style.color = "var(--noir)";
+                document.getElementById('remove-image-btn').style.display = 'block';
             };
             reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            imageBase64 = "";
+            document.getElementById('file-upload').value = "";
+            document.getElementById('image-preview').style.display = 'none';
+            document.getElementById('upload-label').innerHTML = "📷 Choisir une photo";
+            document.getElementById('upload-label').style.background = "var(--violet)";
+            document.getElementById('upload-label').style.color = "var(--blanc)";
+            document.getElementById('remove-image-btn').style.display = 'none';
         }
 
         async function generateVideo() {
@@ -185,8 +204,7 @@
             const langue = document.getElementById('langue').value;
 
             if (!apiKey) { alert('⚠️ Sauvegardez d\'abord votre clé API.'); return; }
-            if (!imageBase64) { alert('⚠️ Veuillez choisir une photo de votre galerie.'); return; }
-            if (!prompt) { alert('⚠️ Veuillez décrire ce que l\'IA doit faire.'); return; }
+            if (!prompt) { alert('⚠️ Veuillez décrire ce que vous voulez générer.'); return; }
 
             speakText(prompt, langue);
 
@@ -200,29 +218,39 @@
             resultDiv.style.display = 'none';
 
             try {
-                // On intègre le format choisi dans le prompt !
-                let finalPrompt = `Style: ${style}. ${prompt}. Aspect ratio: ${format}, high quality, cinematic.`;
+                // On adapte le prompt selon s'il y a une image ou non
+                let finalPrompt = "";
+                if (imageBase64) {
+                    finalPrompt = `Animate this image. Style: ${style}. Action: ${prompt}. Aspect ratio: ${format}, high quality, cinematic.`;
+                } else {
+                    finalPrompt = `Generate a video of: ${prompt}. Style: ${style}. Aspect ratio: ${format}, high quality, cinematic.`;
+                }
                 
                 let response;
                 let retries = 0;
                 const maxRetries = 5;
 
                 while (retries <= maxRetries) {
+                    // On prépare les données (Payload)
+                    let payload = {
+                        model: 'agnes-video-v2.0',
+                        prompt: finalPrompt,
+                        num_frames: 121,
+                        frame_rate: 24
+                    };
+
+                    // SI une image est présente, on l'ajoute au payload !
+                    if (imageBase64) {
+                        payload.image = imageBase64;
+                    }
+
                     response = await fetch('https://apihub.agnes-ai.com/v1/videos', {
                         method: 'POST',
                         headers: {
                             'Authorization': 'Bearer ' + apiKey,
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            model: 'agnes-video-v2.0',
-                            prompt: finalPrompt,
-                            image: imageBase64, 
-                            num_frames: 121,
-                            frame_rate: 24
-                            // Certaines API acceptent aussi aspect_ratio: format, 
-                            // mais l'écrire dans le prompt marche toujours.
-                        })
+                        body: JSON.stringify(payload)
                     });
 
                     if (response.status === 503) {
