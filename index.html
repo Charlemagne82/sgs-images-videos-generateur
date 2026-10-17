@@ -55,6 +55,12 @@
         }
         textarea { height: 80px; resize: vertical; }
         
+        .upload-btn {
+            background: var(--violet); color: var(--blanc); border: 2px dashed var(--blanc);
+            padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold;
+            cursor: pointer; width: 100%; margin-bottom: 15px; display: block;
+        }
+        
         button.main-btn {
             background: var(--vert); color: var(--noir); border: none;
             padding: 15px; border-radius: 8px; font-size: 1.1rem;
@@ -67,6 +73,7 @@
         .loader { display: none; margin-top: 20px; color: var(--jaune); font-weight: bold; font-size: 0.9rem; }
         .video-result { display: none; margin-top: 20px; width: 100%; max-width: 400px; }
         .video-result video { width: 100%; border-radius: 10px; border: 2px solid var(--vert); }
+        #image-preview { display: none; width: 100%; border-radius: 10px; margin-bottom: 15px; border: 2px solid var(--jaune); max-height: 200px; object-fit: contain; background: #000;}
     </style>
 </head>
 <body>
@@ -88,7 +95,14 @@
     </div>
 
     <div class="form-container">
-        <label for="style">1. Univers :</label>
+        <label>1. Ajoutez une photo :</label>
+        <label for="file-upload" class="upload-btn" id="upload-label">
+            📷 Choisir une photo
+        </label>
+        <input type="file" id="file-upload" accept="image/*" style="display:none;" onchange="previewImage(event)">
+        <img id="image-preview" alt="Aperçu de votre photo">
+
+        <label for="style">2. Univers :</label>
         <select id="style">
             <option value="comique">😂 Comique & Humour</option>
             <option value="documentaire">🎥 Documentaire</option>
@@ -97,7 +111,16 @@
             <option value="histoire">📜 Histoire de l'Église</option>
         </select>
 
-        <label for="langue">2. Langue de la voix :</label>
+        <!-- NOUVEAU : Choix du format -->
+        <label for="format">3. Format de la vidéo :</label>
+        <select id="format">
+            <option value="9:16 (Portrait - TikTok/Reels/Shorts)">📱 9:16 (Portrait - TikTok/Reels)</option>
+            <option value="16:9 (Paysage - YouTube/Cinéma)">🖥️ 16:9 (Paysage - YouTube)</option>
+            <option value="1:1 (Carré - Instagram)">⬛ 1:1 (Carré - Instagram)</option>
+            <option value="4:5 (Portrait large - Feed)">📱 4:5 (Portrait large)</option>
+        </select>
+
+        <label for="langue">4. Langue de la voix :</label>
         <select id="langue">
             <option value="fr-FR">🇫🇷 Français</option>
             <option value="ln-CD">🇨🇩 Lingala</option>
@@ -107,15 +130,15 @@
             <option value="en-US">🇬🇧 Anglais</option>
         </select>
 
-        <label for="prompt">3. Décrivez votre vision (ou l'histoire à raconter) :</label>
-        <textarea id="prompt" placeholder="Ex: Un documentaire sur la création du monde, avec des images de la nature..."></textarea>
+        <label for="prompt">5. Décrivez l'action (ou l'histoire à raconter) :</label>
+        <textarea id="prompt" placeholder="Ex: Fais bouger doucement les cheveux, ajoute une lumière dorée et un sourire..."></textarea>
 
         <button class="main-btn" id="generate-btn" onclick="generateVideo()">
-            Générer la vidéo
+            Créer la vidéo
         </button>
     </div>
 
-    <div class="loader" id="loader">⏳ L'Intelligence Artificielle travaille... (Cela peut prendre 1 à 2 minutes)</div>
+    <div class="loader" id="loader">⏳ L'Intelligence Artificielle travaille... (Veuillez patienter)</div>
     
     <div class="video-result" id="video-result">
         <h3 style="color: var(--jaune);">✨ Votre Vidéo :</h3>
@@ -123,32 +146,47 @@
     </div>
 
     <script>
+        let imageBase64 = ""; 
+
         document.getElementById('api-key').value = localStorage.getItem('agnes_api_key') || '';
 
         function saveApiKey() {
             const key = document.getElementById('api-key').value.trim();
             if(key.startsWith('sk-')) {
                 localStorage.setItem('agnes_api_key', key);
-                alert('✅ Clé API sauvegardée avec succès !');
+                alert('✅ Clé API sauvegardée !');
             } else {
-                alert('❌ La clé doit commencer par "sk-". Vérifiez votre clé.');
+                alert('❌ La clé doit commencer par "sk-".');
             }
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imageBase64 = e.target.result; 
+                const preview = document.getElementById('image-preview');
+                preview.src = imageBase64;
+                preview.style.display = 'block';
+                document.getElementById('upload-label').innerHTML = "✅ Photo sélectionnée (Appuyez pour changer)";
+                document.getElementById('upload-label').style.background = "var(--vert)";
+                document.getElementById('upload-label').style.color = "var(--noir)";
+            };
+            reader.readAsDataURL(file);
         }
 
         async function generateVideo() {
             const apiKey = localStorage.getItem('agnes_api_key');
             const prompt = document.getElementById('prompt').value;
             const style = document.getElementById('style').value;
+            const format = document.getElementById('format').value;
             const langue = document.getElementById('langue').value;
 
-            if (!apiKey) {
-                alert('⚠️ Veuillez d\'abord sauvegarder votre clé API en haut.');
-                return;
-            }
-            if (!prompt) {
-                alert('⚠️ Veuillez décrire votre vision dans la zone de texte.');
-                return;
-            }
+            if (!apiKey) { alert('⚠️ Sauvegardez d\'abord votre clé API.'); return; }
+            if (!imageBase64) { alert('⚠️ Veuillez choisir une photo de votre galerie.'); return; }
+            if (!prompt) { alert('⚠️ Veuillez décrire ce que l\'IA doit faire.'); return; }
 
             speakText(prompt, langue);
 
@@ -162,9 +200,9 @@
             resultDiv.style.display = 'none';
 
             try {
-                let finalPrompt = `Style: ${style}. ${prompt}. Portrait orientation 9:16, high quality, cinematic.`;
+                // On intègre le format choisi dans le prompt !
+                let finalPrompt = `Style: ${style}. ${prompt}. Aspect ratio: ${format}, high quality, cinematic.`;
                 
-                // --- GESTION DE L'ERREUR 503 (File d'attente) ---
                 let response;
                 let retries = 0;
                 const maxRetries = 5;
@@ -179,24 +217,26 @@
                         body: JSON.stringify({
                             model: 'agnes-video-v2.0',
                             prompt: finalPrompt,
+                            image: imageBase64, 
                             num_frames: 121,
                             frame_rate: 24
+                            // Certaines API acceptent aussi aspect_ratio: format, 
+                            // mais l'écrire dans le prompt marche toujours.
                         })
                     });
 
                     if (response.status === 503) {
                         retries++;
-                        loader.innerHTML = `⏳ File d'attente pleine. Nouvelle tentative dans 30s (${retries}/${maxRetries})...`;
-                        await new Promise(r => setTimeout(r, 30000)); // Attend 30 secondes
+                        loader.innerHTML = `⏳ File d'attente pleine. Nouvelle tentative dans 20s (${retries}/${maxRetries})...`;
+                        await new Promise(r => setTimeout(r, 20000));
                     } else {
                         break;
                     }
                 }
 
                 if (response.status === 503) {
-                    throw new Error("Le serveur est surchargé, même après plusieurs tentatives. Veuillez réessayer dans 5 minutes.");
+                    throw new Error("Le serveur est surchargé. Réessayez dans 5 minutes.");
                 }
-
                 if (!response.ok) {
                     throw new Error("Erreur de l'API : " + response.status);
                 }
@@ -204,13 +244,13 @@
                 const data = await response.json();
                 const videoId = data.video_id || data.id;
                 
-                if(!videoId) throw new Error("Pas d'ID de vidéo reçu.");
+                if(!videoId) throw new Error("Pas d'ID reçu.");
 
-                loader.innerHTML = "⏳ L'Intelligence Artificielle travaille... (Cela peut prendre 1 à 2 minutes)";
+                loader.innerHTML = "⏳ Création en cours... (1 à 3 minutes)";
                 
                 let videoUrl = null;
                 while (!videoUrl) {
-                    await new Promise(r => setTimeout(r, 8000)); // On attend 8 secondes (plus prudent)
+                    await new Promise(r => setTimeout(r, 8000)); 
                     
                     const pollRes = await fetch(`https://apihub.agnes-ai.com/agnesapi?video_id=${videoId}&model_name=agnes-video-v2.0`, {
                         method: 'GET',
@@ -231,11 +271,10 @@
                 
             } catch (error) {
                 alert("❌ Oups : " + error.message);
-                console.error(error);
             } finally {
                 btn.disabled = false;
                 loader.style.display = 'none';
-                loader.innerHTML = "⏳ L'Intelligence Artificielle travaille... (Cela peut prendre 1 à 2 minutes)";
+                loader.innerHTML = "⏳ L'Intelligence Artificielle travaille... (Veuillez patienter)";
             }
         }
 
@@ -245,7 +284,6 @@
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang;
                 utterance.rate = 1;
-                utterance.pitch = 1;
                 window.speechSynthesis.speak(utterance);
             }
         }
