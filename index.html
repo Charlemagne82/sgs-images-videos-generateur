@@ -100,7 +100,6 @@
     </div>
 
     <div class="form-container">
-        <!-- Photo optionnelle -->
         <label>1. Photo de départ (Optionnel) :</label>
         <label for="file-upload" class="upload-btn" id="upload-label">
             📷 Choisir une photo
@@ -121,10 +120,10 @@
 
         <label for="format">3. Format de la vidéo :</label>
         <select id="format">
-            <option value="9:16 (Portrait - TikTok/Reels/Shorts)">📱 9:16 (Portrait - TikTok/Reels)</option>
-            <option value="16:9 (Paysage - YouTube/Cinéma)">🖥️ 16:9 (Paysage - YouTube)</option>
-            <option value="1:1 (Carré - Instagram)">⬛ 1:1 (Carré - Instagram)</option>
-            <option value="4:5 (Portrait large - Feed)">📱 4:5 (Portrait large)</option>
+            <option value="9:16">📱 9:16 (Portrait - TikTok/Reels/Shorts)</option>
+            <option value="16:9">🖥️ 16:9 (Paysage - YouTube/Cinéma)</option>
+            <option value="1:1">⬛ 1:1 (Carré - Instagram)</option>
+            <option value="4:5">📱 4:5 (Portrait large - Feed)</option>
         </select>
 
         <label for="langue">4. Langue de la voix :</label>
@@ -218,28 +217,25 @@
             resultDiv.style.display = 'none';
 
             try {
-                // On adapte le prompt selon s'il y a une image ou non
-                let finalPrompt = "";
-                if (imageBase64) {
-                    finalPrompt = `Animate this image. Style: ${style}. Action: ${prompt}. Aspect ratio: ${format}, high quality, cinematic.`;
-                } else {
-                    finalPrompt = `Generate a video of: ${prompt}. Style: ${style}. Aspect ratio: ${format}, high quality, cinematic.`;
-                }
+                let finalPrompt = imageBase64 
+                    ? `Animate this image. Style: ${style}. Action: ${prompt}.` 
+                    : `Generate a video of: ${prompt}. Style: ${style}.`;
                 
                 let response;
                 let retries = 0;
-                const maxRetries = 5;
+                const maxRetries = 6; // Un peu plus de tentatives
 
                 while (retries <= maxRetries) {
-                    // On prépare les données (Payload)
+                    // UTILISATION DU NOUVEAU MODÈLE 2.5 FLASH
                     let payload = {
-                        model: 'agnes-video-v2.0',
+                        model: 'agnes-video-2.5-flash',
                         prompt: finalPrompt,
-                        num_frames: 121,
-                        frame_rate: 24
+                        size: '720P',
+                        aspect_ratio: format,
+                        seconds: '5', // Le modèle Flash gère les secondes sous forme de chaîne
+                        mode: 'text' // Mode par défaut, mais l'image sera ajoutée si présente
                     };
 
-                    // SI une image est présente, on l'ajoute au payload !
                     if (imageBase64) {
                         payload.image = imageBase64;
                     }
@@ -253,20 +249,23 @@
                         body: JSON.stringify(payload)
                     });
 
-                    if (response.status === 503) {
+                    // GESTION DES ERREURS DE FILE D'ATTENTE (503 ou 429)
+                    if (response.status === 503 || response.status === 429) {
                         retries++;
-                        loader.innerHTML = `⏳ File d'attente pleine. Nouvelle tentative dans 20s (${retries}/${maxRetries})...`;
-                        await new Promise(r => setTimeout(r, 20000));
+                        const waitTime = 60; // On attend 60 secondes comme recommandé par la doc
+                        loader.innerHTML = `⏳ File d'attente saturée. Nouvelle tentative dans ${waitTime}s (${retries}/${maxRetries})...<br><small>(C'est normal, le serveur gratuit est très demandé)</small>`;
+                        await new Promise(r => setTimeout(r, waitTime * 1000));
                     } else {
                         break;
                     }
                 }
 
-                if (response.status === 503) {
-                    throw new Error("Le serveur est surchargé. Réessayez dans 5 minutes.");
+                if (response.status === 503 || response.status === 429) {
+                    throw new Error("Le serveur gratuit est très occupé. Veuillez réessayer dans quelques minutes (ou plus tard dans la journée).");
                 }
                 if (!response.ok) {
-                    throw new Error("Erreur de l'API : " + response.status);
+                    const errText = await response.text();
+                    throw new Error(`Erreur de l'API : ${response.status} - ${errText}`);
                 }
 
                 const data = await response.json();
@@ -274,13 +273,16 @@
                 
                 if(!videoId) throw new Error("Pas d'ID reçu.");
 
-                loader.innerHTML = "⏳ Création en cours... (1 à 3 minutes)";
+                loader.innerHTML = "⏳ Création en cours... (Le serveur traite votre vidéo)";
                 
                 let videoUrl = null;
-                while (!videoUrl) {
-                    await new Promise(r => setTimeout(r, 8000)); 
+                let pollAttempts = 0;
+                while (!videoUrl && pollAttempts < 60) { // On vérifie pendant max 10 minutes
+                    await new Promise(r => setTimeout(r, 10000)); // Vérification toutes les 10s
+                    pollAttempts++;
                     
-                    const pollRes = await fetch(`https://apihub.agnes-ai.com/agnesapi?video_id=${videoId}&model_name=agnes-video-v2.0`, {
+                    // L'URL de polling doit inclure le nom du modèle
+                    const pollRes = await fetch(`https://apihub.agnes-ai.com/agnesapi?video_id=${videoId}&model_name=agnes-video-2.5-flash`, {
                         method: 'GET',
                         headers: { 'Authorization': 'Bearer ' + apiKey }
                     });
@@ -288,11 +290,13 @@
                     const pollData = await pollRes.json();
                     
                     if (pollData.status === 'completed' || pollData.status === 'succeeded') {
-                        videoUrl = pollData.metadata?.url || pollData.url;
+                        videoUrl = pollData.url;
                     } else if (pollData.status === 'failed') {
-                        throw new Error("La génération a échoué.");
+                        throw new Error("La génération a échoué sur le serveur.");
                     }
                 }
+
+                if (!videoUrl) throw new Error("Délai d'attente dépassé pour la création de la vidéo.");
 
                 videoElement.src = videoUrl;
                 resultDiv.style.display = 'block';
